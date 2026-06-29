@@ -80,6 +80,7 @@ import me.rerere.rikkahub.data.model.AssistantAffectScope
 import me.rerere.rikkahub.data.model.MessageNode
 import me.rerere.rikkahub.data.model.replaceRegexes
 import me.rerere.rikkahub.ui.components.richtext.MarkdownBlock
+import me.rerere.rikkahub.ui.components.richtext.SimpleHtmlBlock
 import me.rerere.rikkahub.ui.components.richtext.ZoomableAsyncImage
 import me.rerere.rikkahub.ui.components.richtext.buildMarkdownPreviewHtml
 import me.rerere.rikkahub.ui.components.ui.ChainOfThought
@@ -365,17 +366,39 @@ private fun MessagePartsBlock(
                                     onClick = { onUserMessageClick?.invoke() },
                                 ) {
                                     Column(modifier = Modifier.padding(8.dp)) {
-                                        MarkdownBlock(
-                                            content = part.text.replaceRegexes(
-                                                assistant = assistant,
-                                                scope = AssistantAffectScope.USER,
-                                                visual = true,
-                                            ),
-                                            onClickCitation = handleClickCitation
+                                        val processedText = part.text.replaceRegexes(
+                                            assistant = assistant,
+                                            scope = AssistantAffectScope.USER,
+                                            visual = true,
                                         )
+                                        if (Regex("</?[a-zA-Z][^>]*>").containsMatchIn(processedText)) {
+                                            SimpleHtmlBlock(html = processedText, modifier = Modifier)
+                                        } else {
+                                            MarkdownBlock(
+                                                content = processedText,
+                                                onClickCitation = handleClickCitation
+                                            )
+                                        }
                                     }
                                 }
                             } else {
+                                val processedText = part.text.replaceRegexes(
+                                    assistant = assistant,
+                                    scope = AssistantAffectScope.ASSISTANT,
+                                    visual = true,
+                                )
+                                val contentBlock = @Composable {
+                                    if (Regex("</?[a-zA-Z][^>]*>").containsMatchIn(processedText)) {
+                                        SimpleHtmlBlock(html = processedText, modifier = Modifier)
+                                    } else {
+                                        MarkdownBlock(
+                                            content = processedText,
+                                            onClickCitation = handleClickCitation,
+                                            modifier = Modifier
+                                        )
+                                    }
+                                }
+
                                 if (settings.displaySetting.showAssistantBubble) {
                                     Surface(
                                         modifier = Modifier.animateContentSize(),
@@ -383,35 +406,16 @@ private fun MessagePartsBlock(
                                         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = settings.displaySetting.bubbleOpacity),
                                     ) {
                                         Column(modifier = Modifier.padding(8.dp)) {
-                                            MarkdownBlock(
-                                                content = part.text.replaceRegexes(
-                                                    assistant = assistant,
-                                                    scope = AssistantAffectScope.ASSISTANT,
-                                                    visual = true,
-                                                ),
-                                                onClickCitation = handleClickCitation,
-                                            )
+                                            contentBlock()
                                         }
                                     }
                                 } else {
-                                    MarkdownBlock(
-                                        content = part.text.replaceRegexes(
-                                            assistant = assistant,
-                                            scope = AssistantAffectScope.ASSISTANT,
-                                            visual = true,
-                                        ),
-                                        onClickCitation = handleClickCitation,
-                                        modifier = Modifier
-                                            .animateContentSize()
-                                    )
+                                    contentBlock()
                                 }
                             }
                         }
 
-                        // 流式生成期间不启用 SelectionContainer：Markdown 在不断重渲染，
-                        // 内部可选择的 Text 会频繁注册/注销，与 Compose 选择工具栏在绘制阶段
-                        // 对 selectable 列表的排序产生并发修改，导致 ConcurrentModificationException。
-                        // 生成结束后内容稳定，再启用文本选择。
+                        // 流式生成期间不启用 SelectionContainer
                         if (loading) {
                             textContent()
                         } else {
