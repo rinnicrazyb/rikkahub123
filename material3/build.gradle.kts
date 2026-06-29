@@ -22,7 +22,7 @@ android {
     }
     sourceSets {
         named("main") {
-            kotlin.srcDir("material-color-utilities/kotlin")
+            kotlin.srcDirs("material-color-utilities/kotlin")
         }
     }
 }
@@ -30,5 +30,5 @@ android {
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.material3)
-    implementation("androidx.compose.material3:material3-dynamic-color")
+    implementation("androidx.compose.material3:material3-dynamic-color:1.5.0-alpha22")
 }
